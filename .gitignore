@@ -73,6 +73,11 @@ artifacts/
 # Chutzpah Test files
 _Chutzpah*
 
+# Visual Studio
+*.sln
+*.vcxproj
+*.filters
+
 # Visual C++ cache files
 ipch/
 *.aps
