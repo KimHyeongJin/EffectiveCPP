@@ -23,7 +23,7 @@ typename을 쓰고 사용자 정의 타입만 쓰이는 부분에 class를 신주단지 모시듯 쓰는 프
 아래에서 보여드리 겠지만, 심지어 컴파일도 안 될 겁니다. 하지만 이런저런 부분은 일단 전부 넘어가 주세요. 제정
 선이 아닌 건 맞지만 다 이유가 있는 거니까요.
 
-//컨테이더에 들어 있는 두 번째 원소를 출력합니다. 도저히 제 정신으로 짠 코드가 아닙니다.
+//컨테이너에 들어 있는 두 번째 원소를 출력합니다. 도저히 제 정신으로 짠 코드가 아닙니다.
 template< typename C >
 void print2nd( const C& container )
 {
@@ -41,7 +41,7 @@ void print2nd( const C& container )
 iter의 타입은 보시다시피 C::const_iterator인데, 템플릿 매개변수인 C에 따라 달라지는 타입입니다. 템플릿 내의 이름 
 중에 이렇게 템플릿 매개변수에 종속된 것을 가리켜 의존 이름(dependent name)이라고 합니다. 의존 이름이 어떤 클래스 안
 에 중첩되어 있는 경우가 있는데, 필자는 이 경우의 이름을 중첩 의존 이름(nested dependent name)이라고 부릅니다. 위의 
-코드에서 C::const_iterator는 중첩 의존 이름입니다 사실, 정확히 하자면 중접 의존 타입 이름(nested dependent 
+코드에서 C::const_iterator는 중첩 의존 이름입니다 사실, 정확히 하자면 중첩 의존 타입 이름(nested dependent 
 type name)이라고 말해야 맞습니다. 타입을 참조하는 중첩 의존 이름이란 뜻이지요.
 
 print2nd 함수에서 쓰이는 또 하나의 지역 변수, value는 int 타입입니다. int는 템플릿 매개변수가 어떻든 상관없는 
@@ -56,14 +56,133 @@ name)이라고 하지 않느냐고 말씀하신다면 필자도 별로 드릴 말씀이 없습니다. 혹시나 
 template< typename C >
 void print2nd( const C& container )
 {
-	C::const_iterator *x;
+	C::const_iterator *x;	// const_iterator가 C 클래스의 정적 데이터 멤버라면?
 	...
 }
 
-언뜻 보면 C::const_iterator에 대한 포인터인 지역 변수로서 x를 선언하고 있는 것 같습니다. 하지만 주의히실 게 있습니다. 
+언뜻 보면 C::const_iterator에 대한 포인터인 지역 변수로서 x를 선언하고 있는 것 같습니다. 하지만 주의하실 게 있습니다. 
 우리 눈에 그렇게 보이는 것은 C::const_iterator가 타입이라는 사실을 "인간인 우리가 알고 있을 때만" 그렇다는 말입니다. 
 그런데 C::const_iterator가 타입이 아니라면 어떻게 하죠? 우연히 const_iterator 라는 이름을 가진 정적 데이터 멤버
 가 C에 들어 있다고도 볼 수 있죠. 그리고 x가 다른 전역 변수의 이름이라면 어떤 사태가 발생하는지 아세요? 이런 경우라면 
 위의 코드는 지역 변수를 선언한 것이 아닙니다. 그냥 C::const_iterator와 x를 피연산자로 한 곱셈 연산 이란 말입니다! 
 저 스콧 아저씨 이제 제대로 맛이 갔군, 그렇게 보이는 게 당연하겠죠. 하지만 얼마든지 가능한 일입니다. C++ 구문분석기를 
-작성히는 개빌차는 가능한 모든 입력에 대해 온 촉각을 곤두세워야 합니다. 이런 돼먹지 않은 입력도 포함해서 말이죠. 
+작성히는 개빌차는 가능한 모든 입력에 대해 온 촉각을 곤두세워야 합니다. 이런 돼먹지 않은 입력도 포함해서 말이죠.
+
+C의 정체가 무엇인지 다른 곳에서 알려 주지 않으면 C::const_iterator가 진짜 타입인지 아닌지를 알아낼 방법은 천재가
+만든 컴파일러라고 해도 없습니다. print2nd 함수 템플릿이 구문분석기에 의해 처리되는 순간에도 C의 정체는 저절로 밝혀지지
+않습니다. 이때 C++는 모호성을 해결하기 위해 어떤 규칙을 하나 사용합니다. 이 규칙에 의하면, 구문 분석기는 템플릿 안에
+서 중첩 의존 이름을 만나면 여러분(프로그래머)이 타입이라고 알려 주지 않는 한 그 이름이 타입이 아니라고 가정하게 되어 
+있습니다. 다시 말해, 중첩 의존 이름은 기본적으로 타입이 아닌 것으로 해석됩니다(예외가 하나 있긴 한데, 조금 있다가 말
+씀드리겠 습니다).
+
+이야기는 이 정도면 된 것 같죠? 이제는 print2nd 템플릿의 시작부분이 다르게 보일 것 입니다.
+
+template< typename C >
+void print2nd( const C& container )
+{
+	if( container.size() >=2 )
+	{
+		C::const_iterator iter( container.begin() ); // 이 이름은 타입이 아닌 것으로 가정합니다.
+		...
+	}
+}
+
+이것이 제 정신으로 작성한 C++ 코드가 아닐 수밖에 없는 이유가 이제는 우리 마음에 촉촉이 젖어드는 것만 같은 기분입니다. 
+iter의 선언이 선언으로서 의미가 있으려면 C::const_lterator가 반드시 타입이어야 하는데, 우리는 C++ 컴파일러에게 
+타입이라고 알려 주지 않았으니, C++는 제멋대로 타입이 아닌 것으로 가정해 버린 거죠. 이 난국을 바로 잡으려면 한 가지 방
+법밖엔 없습니다. C++에게 C::const_lterator가 타입이라고 말해 주는 거죠. 바로 이 경우에 C::const_lterator 앞에
+다가 typename이라는 키워드를 붙여 놓습니다.
+
+//이 코드는 제대로 된 C++ 코드입니다.
+template< typename C >
+void print2nd( const C& container )
+{
+	if( container.size() >=2 )
+	{
+		typename C::const_iterator iter( container.begin() );
+		...
+	}
+}
+
+이 규칙은 여러분이 알고 계시면 평생 도움이 될 테니 잘 알아 두시기 바랍니다. 어느 때이 든지 템플릿 안에서 중칩 의존 이름을 
+참조할 경우에는, 이제 그 이름 앞에 typename 키워드를 붙여 주는 것을 잊지 마세요(아, 역시 예외가 있습니다만 조금 있다가 
+보시게 됩니디).
+
+typename 키워드는 중첩 의존 이름만 식별하는 데 써야 합니다. 그 외의 이름은 typename을 가져선 안 된다는 이야기죠. 예
+를 들면, 어떤 컨테이너와 그 컨테이너 내의 반복자를 한꺼번에 받아들이는 함수 템플릿을 다음과 같이 만들었을 때 그러지 말라
+는 것입니다.
+
+template<typename C>				// typename 쓸 수 있음("class" 와 같은 의미) 
+void f(const C& container,			// typename 쓰면 안 됨 
+		typename C::iterator iter); // typename 꼭 써야 함
+
+이 예제에서 C는 중첩 의존 타입 이름이 아니기(즉, 템플릿 매개변수에 의존적인 어떤 것도 C 를 품고 있지 않습니다) 때문에, 컨
+테이너를 선언할 때는 typename을 이 앞에 붙이면 안됩니다. 반면에 C::iterator는 분명히 중첩 의존 이름이기 때문에, 이 앞
+에는 typename 이 반드시 붙어야만 합니다.
+
+"typename은 중첩 의존 타입 이름 앞에 붙여 주어야 한다"는 규칙에 예외가 하나 있다고 앞에서 말씀드렸죠. 이 예외란, 중첩 의
+존 타입 이름이 기본 클래스의 리스트에 있거나 멤버 초기화 리스트 내의 기본 클래스 식별자로서 있을 경우에는 typename을 붙여
+주면 안 된 다는 것입니다. 다음의 예제를 봐 주세요.
+
+template<typename T> 
+class Derived : public Baet<T>::Nested  // 상속되는 기본 클래스 리스트: typename 쓰면 안 됨 
+{
+public :
+	explicit Derived(int x) : Base<T>::Nexted(x)	// 멤버 초기화 리스트에 있는 기본 클래스 식별자 typename 쓰면 안 됨 
+	{
+		typename Base<T>::Nested temp;	// 중첩 의존 타업 이름이며 기본 클래스 리스트에도 없고 멤버 초기화 리스트의 
+		...								//기본 클래스 식별자도 아님 typename 필요 
+	}
+	...
+;}
+
+이런 식으로 이랬다저랬다 하는 게 싫어질 것도 같습니다만, 일단 몇 번만 경험해 보면 크게 거슬리는 일은 없을 거예요.
+
+마지막으로 typename에 관한 예제를 하나만 더 보도록 합시다. 이 예제는 현업 코드에서 여러분이 보시게 될 대표적인 사례일 
+것 같아서 말이죠. 여러분이 반복자를 매개변수로 받는 어떤 함수 템플릿을 만들고 있는데, 매개변수로 넘어온 반복자가 가리키는 
+객체의 사본을 temp라는 이름의 지역 변수로 만들어 놓고 싶다고 가정합시다. 그러면 다음과 비슷한 코드가 나올 것입니다.
+
+template<typename IterT> 
+void workWithIterator(IterT iter)
+{
+	typename std::iterator_traits<IterT>::value_type temp(*iter);
+	...
+}
+
+std::iterator_traits<IterT>::value_type을 보고 당황하는 독자가 없었으면 좋겟습니다. 그저 C++ 표준의 특성정보(taits) 
+클래스(항목 47 참조)를 시용한 것뿐입니다. 우리말로 풀면 "IterT 타입의 객체로 가리키는 대상의 타입"이란 뜻이고요. 이 문장은 
+IterT 객체가 가리키는 것과 똑같은 타입의 지역 변수(temp)를 선언한 후, iter가 가리키는 객체로 그 temp를 초기화하는 문장입
+니다. 만일 IterT가 vector<int>::iterator 라면 temp의 타입은 int이겠지요. IterT가 list<string>::iterator라면 
+temp의 타입은 string이겠고요. 어쨌든 여기서 std::iterator_traits<IterT>::value_type은 중첩 의존 타입 이름이므로
+(value_type이 iterator_traits<IterT> 안에 중 첩되어 있고, IterT는 템플릿 매개변수이니까요), 이 이름 앞에는 typename을 
+써 주어야 합 니다. 
+
+혹시 독자 여러분 중에 std::iterator_traits<IterT>::value_type이 웬지 읽기가 거북하다고 느끼는 분이 계신다면 '이걸 키
+보드로 치면 또 어떤 느낌일까'라고 상상해 보세요. 프로그래머의 피가 불끈거리는 분이라면 저 이름을 두 번 이상 친다고 생각만 해도 
+숨이 막힐지도 모릅니다. 그래서 typedef 이름을 만들고 싶을 것이고요. 참, 특성정보 클래스에 속한 value_type 등의 멤버 이름
+(역시 항목 47 참조)에 대해 typedef 이름을 만들 때는 그 멤버 이름과 똑같이 짓는 것이 관례로 되어 있습니다. 따라서 이런 경우
+에는 typedef로 정의하는 지역 이름을 대개 다음과 같이 짓습니다.
+
+template<typename IterT> 
+void workWithIterator(IterT iter)
+{
+	typedef typename std::iterator_traits<IterT>::value_type value_type;
+	value_type temp(*iter);
+	...
+}
+
+하나씩 따로 있어야 할 것들이 "typedef typename" 형태로 된 것 같다고 생각하는 프로그래머도 적지 않을 것 같습니다만, 이것은 그
+저 중첩 의존 타입 이름을 참조하는 데 지켜야 할 규칙 때문에 생긴 부산물이며 논리적으로도 하자가 없습니다. 모르긴 해도 적응하는 데 
+그리 오래 걸리지 않을 것입니다. 또 사실 이렇게 할 수밖에 없는 이유도 있지요. 제정신이라면 대체 typename std::iterator_traits<IterT>::value_type
+을 몇 번까지 또박또박 치실 수 있을 것 같으세요?
+
+이야기를 끝내기 전에 한 가지만 더 일러두고 싶습니다. 사실, 이번 항목에 나온 typename에 관한 규칙을 얼마나 강조하느냐는 컴파일러
+마다 조금씩 차이가 있답니다. 어떤 컴파일러는 typename을 꼭 써야 하는데 빼먹은 경우를 그대로 받아들이고, 또 어떤 컴파일러는 typename
+이 쓰였지만 원래는 허용되지 않는 경우를 내버려 둡니다. 이 외에 typename이 쓰였고 문맥상 꼭 써야 하는 부분인데도 typename올 거
+부하는 컴파일러도 몇 개 있습니다(대개 구닥다리 컴파일러입니다). 무슨 뜻인지 알겠죠? typename과 중첩 의존 타입 이름 사이에는 아직
+도 이런 미묘한 관계가 있기 때문에 프로그램을 이식할 때 다소 골치가 아플 수도 있다는 것입니다.
+
+이것마은 잊지 말자!
+* 템플릿 매개변수를 선언할 때, class 및 typename은 서로 바꿔 써도 무방합니다.
+* 중첩 의존 이름을 식별하는 용도에는 반드시 typename을 사용합니다. 단, 중첩 의존 이름이 기본 클래스 리스트에 있거나 멤버 초기화 리스트
+  내의 기본 클래스 식별자로 있는 경우에는 예외입니다.
