@@ -1,0 +1,135 @@
+항목 43: 템플릿으로 만들어진 기본 클래스 안의 이름에 접근하는 방법을 알아 두자
+
+정확한 이유는 알 수 없지만 어쨌든 여러분은 지금, 다른 몇 개의 회사에 메시지를 전송할 수 있는 응용프로그램을 
+만들어내야 하나 봅니다. 전송용 메시지는 암호화될 수도 있고 비가공텍스트(비암호회) 형태가 될 수도 있습니다. 
+만약 어떤 메시지가 어떤 회사로 전송될지를 컴파일 도중에 결정할 수 있는 충분한 정보가 있다면, 주저 없이 템플
+릿 기반의 방법을 쓸 수 있겠지요. 다음처럼 말이죠.
+
+class CompanyA
+{
+public:
+	...
+	void sendCleartext(const std::string& msg); 
+	void sendEncrypted(const std::string& msg);
+	...
+};
+
+class CompanyB 
+{ 
+public :
+	...
+	void sendCleartext(const std::string& msg); 
+	void sendEncrypted(const std::string& msg);
+	...
+};
+
+...							// 다른 회사들을 나타내는 각각의 클래스 
+
+class Msglnfo { ... };		// 메시지 생성에 사용되는 정보를 담기 위한 클래스
+
+template<typename Company>
+class MsgSender 
+{ 
+public : 
+	...									// 생성자, 소멸자, 등등
+	void sendClear(const MsgInfo& info)
+	{
+		std::string msg; 
+		info로부터 msg를 만읍니다;
+
+		Company c; 
+		c.sendCleartext(msg); 
+	}
+	void sendSecret(const MsgInfo& info) // sendClear 함수와 비슷합니다. 단, 
+	{ ... }								// c.sendEnCrypted 힘수를 호출하는 점이 차이
+}
+
+여기까지만 하면 일단 잘 돌아갈 것입니다. 그런데 이에 덧붙여서 메시지를 보낼 때마다 관련 정보를 로그로 
+남기고 싶은 분들도 계시겠지요. 파생 클래스를 사용하면 이 기능을 쉽게 붙일 수 있고, 그렇게 해 주는게 
+맞을 것 같습니다.
+
+template<typename Company>
+class LoggingMsgSender: public MsgSender<Company> 
+{ 
+public:
+	...										// 생성자, 소멸자, 등등 
+	void sendClearMsg( const MsgInfo& info )
+	{
+		"메시지 전송 전" 정보를 로그에 기록합니다; 
+		sendClear(info);						// 기본 클래스의 함수를 호출하는데, 이 코드는 캄파일되지 않습니다. 
+		"에시지 전송 후" 정보를 로그에 기록합니다;
+	}
+	...
+};
+
+조금만 신경 써서 코드를 보면 파생 클래스에 있는 메시지 전송 함수의 이름(sendClearMsg)이 기본 클래스에 있는 것(sendClear)
+과 다르다는 점이 눈에 될 것입니다. 꼼꼼하게 잘 된 설계입니다. 기본 클래스로부터 물려받은 이름을 파생 클래스에서 가리는 문제
+(항목 33 참조)는 물론이고 상속받은 비가상 함수를 재정의히는 문제(항목 36 참조)를 일으키지 않도록 한 것이기 때문입니다. 그것
+까진 '참 잘했어요'이지만 이 코드는 컴파일되지 않습니다. 적어도 표준을 따르는 컴파일러를 쓴다면 컴파일이 안 될 것입니다. 
+'sendClear 함수가 존재하지 않는다'라는 것이 컴파일이 안되는 이유입니다. 우리 눈에는 기본 클래스에 들어있는 sendClear 함수
+가 버젓이 보이는데도, 컴파일러는 기본 클래스를 들여다보려고 하지도 않는 것입니다. 어째서일까요? 환장할 것만 같은 의혹은 점점 
+부풀어만 갑니다. 
+
+문제는 간단합니다. 컴파일러가 LoggingMsgSender 클래스 템플릿의 정의와 마주칠 때, 컴파일러는 대체 이 클래스가 어디서 파생된 
+것인지를 모른다는 것입니다. MsgSender<Company>인 것은 분명 맞죠 하지만 Company는 템플릿 매개변수이고, 이 템플릿 매개 변수
+는 나중(LoggingMsgSender가 인스턴스로 만들어질 때)까지 무엇이 될지 알 수 없습니다. Company가 정확히 무엇인지 모르는 상황
+에서는 MsgSender<Company> 클래스가 어떤 형태인지 알 방법이 있을리가 없겠죠? 이러니, sendClear 함수가 들어 있는지 없는지
+알아낼 방법이 없는 것도 당연합니다.
+
+문제를 구체적으로 알고 싶으신 분들을 위해, 가정을 하나 더 합시다. CompanyZ라는 클래스가 있고, 이 클래스는 암호화된 통신만을 사
+용해야 합니다.
+
+class CompanyZ		// 이 클래스는 sendCleartext 함수를 제공하지 않습니다.
+{ 
+public :
+	...
+	void sendEncrypted(const std::string& msg);
+	...
+};
+
+조금 전에 보신 일반형 MsgSender 템플릿은 그대로 CompanyZ 클래스에 쓰기엔 좀 그렇습니다. 이 템플릿은 CompanyZ 객체의 설계 철학
+과 맞지 않는 sendClear 함수를 제공하기 때문입니다. 이 부분을 바로 잡기 위해, CompanyZ를 위한 MsgSender의 특수화 버전을 만들
+수 있습니다.
+
+template<>								// MsgSender 템플릿의 완전 특수화 버전입니다. sendClear 함수가 빠진것만 제외
+class MsgSender<CompanyZ>				// 하면 일반형 템플릿과 똑같습니다.
+{ 
+public : 
+	...
+	void sendSecret(const MsgInfo& info)
+	{ ... }
+};
+
+여기서 클래스 정의의 앞머리에 삐죽 나와 있는 "template<>" 구문을 잘 봐 주세요. 괄호 안에 아무것도 없는 template의 뜻은 '이건 
+템플릿도 아니고 클래스도 아니다'라는 것입니다. 정확히 말하면, 위의 코드는 MsgSender 템플릿을 템플릿 매개변수가 CompanyZ 일때 쓸
+수 있도록 특수화한 버전입니다. 특히 지금 여러분이 보시는 특수화는 완전 템플릿 특수화(total template specialization)라고 합니
+다. MsgSender 템플릿이 CompanyZ 타입에 대해 특수화되었고, 이때 이 템플릿의 매개변수들이 하나도 빠짐없이(완전히) 구체적인 타입
+으로 정해진 상태라는 뜻이죠 그러니까, 일단 타입 매개변수가 CompanyZ로 정의된 이상 이 템플릿(특수화된)의 매개변수로는 다른 것이 
+올 수 없게 된다는 이야기입니다.
+
+이제 MsgSender 템플릿이 CompanyZ에 대해 특수화된 상태라고 가정하고, 앞에 나왔던 파생 클래스인 LoggingMsgSender로 다시 돌아와 
+보죠.
+
+template<typename Company>
+class LoggingMsgSender: public MsgSender<Company> 
+{ 
+public:
+	...
+	void sendClearMsg( const MsgInfo& info )
+	{
+		"메시지 전송 전" 정보를 로그에 기록합니다; 
+		sendClear(info);						// 만약 Company == CompanyZ 라면 이 함수는 있을 수 조차 없습니다!
+		"에시지 전송 후" 정보를 로그에 기록합니다;
+	}
+	...
+};
+
+주석문에도 나와 있듯이, 기본 클래스가 MsgSender<CompanyZ>이면 이 코드는 말이 되지 않습니다. MsgSender<CompanyZ> 클래스에는 
+sendClear 함수가 없으니까요. 바로 이런 일이 생길 수 있기 때문에 위와 같은 함수 호출을 C++가 받아주지 않는 것입니다. 기본 클래스 
+템플릿은 언제라도 특수화될 수 있고 이런 특수화 버전에서 제공하는 인터페이스가 원래의 일반형 템플릿과 꼭 같으리란 법은 없다는 점을 
+C++가 인식한다는 이야기죠. 이렇기 때문에, C++ 컴파일러는 템플릿으로 만들어진 기본 클래스를 뒤져서 상속된 이름을 찾는 것을 거부합니다. 
+어떤 의미로 보면, C++의 하위 언어들 중 한 부분인 객체 지향 C++에서 템플릿 C++(항목 1 참조)로 옮겨 갈 때 상속 메커니즘이 끊기는 
+것입니다.
+
+난국 돌파를 위해서는 어떻게든 C++의 "난 템플릿화된 기본 클래스는 멋대로 안 뒤질 거야" 동작이 발현되지 않도록 해야 합니다. 방법이 
+세 가지나 있습니다. 첫째, 기본 클래스 함수에 대한 호출문 앞에  "this->"를 붙입니다.
