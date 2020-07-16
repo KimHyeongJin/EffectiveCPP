@@ -37,7 +37,7 @@ class MsgInfo // 메시지 생성에 사용되는 정보를 담기 위한 클래스
 
 
 
-template<typename Company>
+template<typename Company>			//Company는 단순히 템플릿 매개변수 이름이다.
 class MsgSender
 {
 public:
@@ -66,6 +66,9 @@ public:
 		//...
 	}
 };
+//MsgSender 템플릿이 CompanyZ 타입에 대해 특수화되었고, 이때 이 템플릿의 매개변수들이 하나도 빠짐없이(완전히) 구체적인 타입
+//으로 정해진 상태라는 뜻이죠 그러니까, 일단 타입 매개변수가 CompanyZ로 정의된 이상 이 템플릿(특수화된)의 매개변수로는 다른 것이
+//올 수 없게 된다는 이야기입니다.
 //위의 2개의 클래스는 서로 다르다.
 
 
@@ -75,11 +78,11 @@ public:
 //입니다.어째서일까요 ?
 //
 //문제는 간단합니다.컴파일러가 LoggingMsgSender 클래스 템플릿의 정의와 마주칠 때, 컴파일러는 대체 이 클래스가 어디서 파생된
-//것인지를 모른다는 것입니다.MsgSender<Company>인 것은 분명 맞죠. 하지만 Company는 템플릿 매개변수이고, 이 템플릿 매개 변수
-//는 나중(LoggingMsgSender가 인스턴스로 만들어질 때)까지 무엇이 될지 알 수 없습니다.Company가 정확히 무엇인지 모르는 상황
-//에서는 MsgSender<Company> 클래스가 어떤 형태인지 알 방법이 있을리가 없겠죠 ? 이러니, sendClear 함수가 들어 있는지 없는지
+//것인지를 모른다는 것입니다. MsgSender<Company>인 것은 분명 맞죠. 하지만 Company는 템플릿 매개변수이고, 이 템플릿 매개 변수
+//는 나중(LoggingMsgSender가 인스턴스로 만들어질 때)까지 무엇이 될지 알 수 없습니다. Company가 정확히 무엇인지 모르는 상황
+//에서는 MsgSender<Company> 클래스가 어떤 형태인지 알 방법이 있을리가 없겠죠? 이러니, sendClear 함수가 들어 있는지 없는지
 //알아낼 방법이 없는 것도 당연합니다.
-template<typename Company>
+template<typename Company>			//Company는 단순히 템플릿 매개변수 이름이다.
 class LoggingMsgSender : public MsgSender<Company>
 {
 public:
