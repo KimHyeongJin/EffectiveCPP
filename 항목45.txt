@@ -1,0 +1,65 @@
+항목 45: "호환되는 모든 타입"을 받아들이는 데는 멤버 함수 템플릿이 직방!
+
+스파트 포인터(smart pointer)는 포인터처럼 동작하면서 포인터가 주지 못하는 상큼한 기능을 덤으로 갖고 
+있는 객체를 일컫습니다. 이를테면, 항목 13에서 힙 기반 자원의 삭제를 제때 수행하게 하는데 표준 라이브러
+리의 auto_ptr 및 tr1::shared_ptr 객체를 이용하는 예를 보셨을 것입니다. STL 컨테이너의 반복자도 
+스마트 포인터나 마찬가지입니다. 포인터에다가 "++" 연산을 적용해서 연결 리스트의 한 노드에서 다른 노드로 
+이동하는 것을 상상이나 하실 수 있겠어요? 그렇지만 list::iterator는 그게 된단 말씀입니다.
+
+포인터에도 스마트 포인터로 대신할 수 없는 특징이 있습니다. 그 중 하나가 암시적 변환(implicit conversion)을 
+지원한다는 점입니다. 파생 클래스 포인터는 암시적으로 기본 클래스 포인터로 변환되고, 비상수 객체에 대한 
+포인터는 상수 객체에 대한 포인터로의 암시적 변환이 가능하고, 기타 등등 말입니다. 예를 들어, 아래와 같이 
+세 수준(level)으로 구성된 클래스 계통이 주어졌다면 그 아래에 나온 것처럼 몇 가지의 타입 변환이 가능할 
+것입니다. 
+
+class Top { ... }; 
+class Middle: public Top { ... }; 
+class Bottorn: public Middle { ... };
+Top *pt1 = new Middle;	// Middle* => Top*의 변환
+Top *pt2 = new Bottom;	// Bottom* => Top*의 변환 
+const Top *pct2 = pt1;	// Top* => const Top*의 변환 
+ 
+이런 식의 타입 변환을 사용자 정의 스마트 포인터를 써서 흉내 내려면 무척 까다롭습니다. 이를테면 다음과 
+같은 코드를 컴파일러에 통과시키고 싶은데 말이죠.
+
+template<typename T> 
+class SmartPtr 
+{ 
+public:								// 스마트 포인터는 대개 
+explicit SmartPtr (T *realPtr);		// 기본제공 포인터로 초기화됩니다. 
+SmartPtr<Top> pt1 = SmartPtr<Middle> (new Middle);	// SmartPtr<Middle> => 
+													// SmartPtr<Top>의 변환 
+SmartPtr<Top> pt2 = SmartPtr<Bottom> (new Bottom);	// SmartPtr<Bottom> => 
+													// SmartPtr<Top>의 변환 
+SmartPtr<const Top> pct2 = pt1;						// SmartPtr<Top> =>
+													// SmartPtr<const Top>의 변환 
+
+같은 템플릿으로부터 만들어진 다른 인스턴스들 사이에는 어떤 관계도 없기 때문에, 컴파일러의 눈에 비치는 
+SmartPtr<Middle>과 SmartPtr<Top>은 완전히 별개의 클래스입니다. 이를테면 vector<float>와 Widget 
+사이의 거리랄까요(오해 마세요 전혀 상관없 습니다). 요는, SmartPtr 클래스들 사이에 어떤 변환을 하고 싶다고 
+생각했다면, 변환이 되도록 직접 프로그램을 만들어야 한다는 것입니다. 위의 SmartPtr 예제 코드를 보시면, 모든 
+문장이 하나같이 new를 써서 스마트 포인터 객체를 만들고 있죠. 그런 의미에서, 스마트 포인터의 생성자를 우리가 
+원하는 대로 동작하게끔 작성하는 쪽에 일단 초점을 맞춤시다. 생성자 함수를 직접 만드는 것으로는 우리에게 필요
+한 모든 생성자를 만들어내기란 불가능합니다. 위의 클래스 계통에서는 SmartPtr<Middle> 혹은 SmartPtr<Bottom>
+으로부터 SmartPtr<Top>을 생성할 수 있지만, 나중에 클래스 계통이 더 확장된다든지 하면 (확장된) 다른 스마트 
+포인터 타입으로부터 SmartPtr<Top> 객체를 만들 방법도 마련되어야 하니까요. 쉽게 말해서, 나중에 다음과 같은
+클래스를 추가했다면
+
+class BelowBottom: public Bottom { .. . };
+
+SmartPtr<BelowBottom>으로부터 SmartPtr<Top> 객체를 생성하는 부분도 우리가 지원해야 한다는 이야기입니다. 
+이것 때문에 SmartPtr 템플릿까지 수정하는 것은 분병 제정신인 사람으로서 할 일이 아닌 것 같고요.
+
+원칙적으로 지금 우리가 원하는 생성자의 개수는 '무제한'입니다. 그런데 템플릿을 인스턴스 화하면 '무제한' 개수의
+함수를 만들어낼 수 있죠. 그러니까 SmartPtr에 생성자 함수(function)를 둘 필요가 없을 것 같습니다. 바로 생성
+자를 만들어내는 템플릿(template)을 쓰는 것입니다. 이 생성자 템플릿은 이번 항목에서 이야기할 멤버 함수 템플릿
+(member function template, 멈버 템플릿이라고도 함)의 한 예인데요. 멤버 함수 템플릿은 간단히 말해서 어떤 
+클래스의 멤버 함수를 찍어내는 템플릿을 일걷습니다.
+
+template<typename T> 
+class SmartPtr 
+{ 
+public: 
+	tempalte<typenamc U>SmartPtr(const SmartPtr<U>& other);	//"일반화된 복사 생정자"를 만들기 위해
+	...														//마련한 멤버 템플릿
+};
