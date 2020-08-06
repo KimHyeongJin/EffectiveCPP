@@ -2,13 +2,13 @@
 
 가비지 컬렉션(garbagc collection) 기능을 아예 하단에 놓고 기본적으로 지원하는 프로그래밍 
 환경들(예를 들면 자바나 닷넷 등)이 저마다의 매력을 뿜어내는 요즘, 여전히 "수동"만을 고수하는 
-C++의 메모리 관리 방법은 어떻게 보면 구닥다리로 보일 수 있습니다. 그 럼에도 불구하고 이주 
-중요한 시스템 응용프로그램을 제작하는 전 세계의 수많은 개발자들은 메모리를 수동으로 관리할 수 
-있다는 점 때문에 주저 없이 C++를 선택하고 있죠. 이쪽 개발자들은 일단 자신들이 만들 소프트웨
-어의 메모리 사용 성향을 연구한 후에, 그 연구 결 과에 맞추어 메모리 할당 루틴과 해제 루틴을 
-다듬음으로써 가능한 최대의 수행 성능(시간 및 공간 모두에서)을 제공하려고 애쓰고 있습니다.
+C++의 메모리 관리 방법은 어떻게 보면 낡아 보일 수 있습니다. 그럼에도 불구하고 아주 중요한 
+시스템 응용프로그램을 제작하는 전 세계의 수많은 개발자들은 메모리를 수동으로 관리할 수 있다
+는 점 때문에 주저 없이 C++를 선택하고 있죠. 이쪽 개발자들은 일단 자신들이 만들 소프트웨어의 
+메모리 사용 성향을 연구한 후에, 그 연구 결과에 맞추어 메모리 할당 루틴과 해제 루틴을 다듬음
+으로써 가능한 최대의 수행 성능(시간 및 공간 모두에서)을 제공하려고 애쓰고 있습니다.
 
-개발자로서 이런 작업이 가능하려면 일단 C++의 메모리 관리 루틴이 어떻게 동작하는지를 변밀히 
+개발자로서 이런 작업이 가능하려면 일단 C++의 메모리 관리 루틴이 어떻게 동작하는지를 면밀히 
 파악해 두는 것이 착한 자세라 할 수 있겠는데요, 그 '어떻게'가 바로 이 장의 초점입니다. 이번 
 항목에서 벌어질 각종 경기에서 열심히 뛰어 줄 주전 선수는 메모리 할당 및 해제 루틴(operator 
 new 및 operator delete)입니다. 여기에 new 처리자(new-handler)의 불꽃 튀는 도움도 예
@@ -116,5 +116,199 @@ new 처리자가 호출되는 것입니다(이 방법을 살짝 비틀어, new 처리자가 자기 자신의 �
 것입니다).
 
 * new 처리자의 설치를 제거합니다. 
-다시 말해 set new_handler에 널 포인터를 넘깁니다. new 처리자가 설치된 것이 없으면, operator new
+다시 말해 set_new_handler에 널 포인터를 넘깁니다. new 처리자가 설치된 것이 없으면, operator new
 는 메모리 할당이 실패했을 때 예외를 던지게 됩니다.
+
+* 예외를 던집니다. 
+bad_alloc 혹은 bad_alloc에서 파생된 타입의 예외를 던집니다. operator new에는 이쪽 종류의 
+에러를 받아서 처리하는 부분이 없기 때문에, 이 예외는 메모리 할당을 요청한 원래의 위치로 전파
+(propagate, 예외를 다시 던짐)됩니다.
+
+* 복귀하지 않습니다. 
+대개 abort 혹은 exit를 호출합니다.
+
+이 정도면 여러분이 new 처리자 함수를 만들 때 햇갈리지 않으면서도 융통성 있게 대처할 수 있을 
+것입니다. 
+
+할당된 객체의 클래스 타입에 따라서 메모리 할당 실패에 대한 처리를 다르게 가져가고 싶은 경우가 
+있습니다. 다음 예제처럼 하고 싶다는 것인데요.
+
+class X
+{
+public: 
+	static void outOfMemory();
+	...
+};
+
+class Y
+{
+public: 
+	static void outOfMemory();
+	...
+};
+
+X* p1 = new X; // 메모리 할당이 실패했을 경우 X::outOfMemory를 호출합니다.
+Y* p2 = new Y; // 메모리 할당이 실패했을 경우 Y::outOfMemory를 호출합니다.
+
+C++에는 특정 클래스만을 위한 할당에러 처리자를 둘 수 있는 기능 같은 것이 없습니다. 하지만, 사실 
+별 필요도 없습니다. 직접 구현할 수 있거든요. 해당 클래스에서 자체 버전의 set_new_ handler 및 
+operator new를 제공하도록 만들어 주기만 하면 OK입니다. 여기서 클래스에서 제공하는 set_new_handler 
+함수의 역할은 사용자로부터 그 클래스에 쓰기 위한 new 처리자를 받아내는 것입니다(마치 표준 set_new_handler 
+함수가 사용자로부터 전역 new 처리자를 지정받는 데 쓰이는 것과 똑같은 이치죠). 한편 클래스에서 제공하는 
+operator new 함수는, 그 클래스 객체를 담을 메모리가 할당되려고 할 때(그리고 실패했 을 때) 전역 
+new 처리자 대신 클래스 버전의 new 처리자가 호출되도록 만드는 역할을 맡습니다.
+
+자, Widget 클래스에 대한 메모리 할당 실패를 여러분이 직접 처리하고 싶다고 가정합시다. Widget 객체를 
+담을 만큼의 메모리를 operator new가 할당하지 못할 경우에 호출 될 new 처리자 함수를 어딘가에 간수해 
+둘 필요가 있으므로, 이 new 처리자를 가리키는 new_handler 타입의 정적 멤버 데이터를 선언합니다. 즉, 
+Widget 클래스는 아마 다음과 같은 형태이겠죠.
+
+class Widget
+{
+public: 
+	static std::new_handler set_new_handler(std::new_handler p) throw();
+	static void* operator new(std::size_t size) throw(std::bad_alloc); 
+private: 
+	static std::new_handler currentHandler;
+};
+
+정적 클래스 멤버의 정의는 그 클래스의 바깥쪽에 있어야 하므로(정수 타입의 상수 멤버가 이니리면 말이죠 
+항목 2 참조), 다음과 같이 하면 되겠고요.
+
+// NULL로 초기화합니다. 클래스 구현 파일에 두어야 하지요.
+std::new_handler Widget::currentHandler = 0;
+
+Widget 이 제공하는 set new_handler 함수는 자신에게 넘어온 포인터를 아무런 점검 없이 저장해 놓고? 
+바로 전에 저장했던 포인터를 역시 아무런 점검 없이 반환하는 역할만 맡습니다. 표준 라이브러리의 set_new_handler 
+함수가 히는 일과 똑같습니다.
+
+std::new_handler Widget::set_new_handler(std::new_handler p) throw()
+{
+	std::new_handler oldHandler = currentHandler;
+	currentHandler = p;
+	return oldHandler;
+}
+
+이제 마지막으로, Widget의 operator new가 할 일만 님았습니다.
+
+1. 표준 set_new_handler 함수에 Widget의 new 처리자를 넘겨서 호출합니다. 즉, 전역 new 
+처리자로서 Widget의 new 처리자를 설치합니다.
+
+2. 전역 operator new를 호출하여 실제 메모리 할당을 수행합니다. 전역 operator new의 할당이 
+실패하면, 이 함수는 Widget의 new 처리자를 호출하게 됩니다. 바로 앞 단계에서 전역 new 처리자로 
+설치된 함수가 바로 이 함수이니까요. 마지막까지 전역 operator new의 메모리 할당 시도가 실패하면, 
+전역 operator new는 '좌절' 을 선언하는 의미로 bad_alloc 예외를 던집니다. 이 경우 Widget의 
+operator new는 전역 new 처리자를 원래의 것으로 되돌려 놓고, 이 예외를 전파시켜야 합니다. 원래의 
+전역 new 처리자(엄밀히 말하면 Widget이 new 처리자를 설치하기 직전까지 쓰이 던 것)를 항상 실수 
+없이 되돌려놓을 수 있도록, Widget은 전역 new 처리지를 자원으로 간주하고 처리합니다. 즉, 항목 
+13의 조언대로 자원 관리 객체를 사용하여 전역 new 처리자를 관리함으로써 자원 누수를 막습니다.
+
+3 전역 operator new가 Widget 객체 하나만큼의 메모리를 할당할 수 있으면, Widget의 operator new
+는 이렇게 할당된 메모리를 반환합니다. 이와 동시에, 전역 new 처리자를 관리하는 객체의 소멸자가 호출되
+면서 Widget의 operator new 가 호출되기 전에 쓰이고 있던 전역 new 처리자가 자동으로 복원됩니다.
+
+지금까지 나온 인간의 언어를 C++로 풀어 보도록 하죠. 전역 new 처리자를 자원으로 삼는다고 했으므로, 
+우선 자원 관리 클래스를 하나 준비합니다. 이 클래스는 객체 생성 중에 자원을 획득하고 객체 소멸 중에 
+그 자원을 해제하는, 지극히 교과서스러운 RAII 연산(항목 13 참조) 외엔 아무것도 안 갖고 있습니다.
+
+class NewHandlerHolder 
+{
+public:
+	// 현재의 new 처리자를 획득합니다. 
+	explicit NewHandlerHolder(std::new_handler nh):handler(nh) {} 
+	~NewHandlerHolder()		// 이것을 해제합니다. 
+	{ std::set_new_handler(handler); }
+private: 
+	std::new_handler handler;	// 이것을 기억해 둡니다.
+	
+	NewHandlerHolder(const NewHandlerHolder&);	// 복사를 막기 위한 부분 
+												// (항목 14를 참고하세요) 
+	NewHandlerHolder& operator=(const NewHandlerHolder&);
+}
+
+어지간한 일들이 자원 관리 클래스 쪽으로 몰려갔기 때문에, Widget의 operator new 는 정말 간단히 
+구현할 수 있습니다.
+
+void * Widget::operator new(std::size_t size) throw(std:: bad_alloc)
+{
+	// Widget의 new 처리자를  설치합니다. 
+	NewHandlerHolder h(std::set_new_handler(currentHandler));
+	return::operator new(size); // 메모리를 할당하거나 할당이 실패하면 예외를 던집니다.
+
+}								// 이전의 전역 new 처리자가 자동으로 복원됩니다.
+
+Widget 클래스를 사용히는 쪽에서 new 처리자 기능을 쓰려면 다음과 같이 하면 됩니다.
+
+void outOfMem();	// Widget 객체에 대한 메모리 할당이 실패했을 때 
+					// 호출될 함수의 선언 
+
+Widget::set_new_handler(outOfMem);	// Widget의 new 처리자 함수로서 
+									// outOfMem을 설치합니다.
+
+Widget *pw1 = new Widget; // 메모리 할당이 실패하면 outOfMem이 호출됩니다.
+
+std::string *ps = new std::string;	// 메모리 할당이 실패하면 전역 new 처리자 
+									// 함수가(있으면) 호출됩니다.
+
+Widget::set_new_handler(O);	// Widget 클래스만을 위한 new 처리자 함수가  
+							// 아무것도 없도록 합니다(즉, null로 설정합니다).
+
+Widget *pw2 = new Widget;	// 메모리 할당이 실패하면 이제는 예외를 바로 던집니다 
+							// (Widget 클래스를 위한 new 처리자 함수가 없습니다). 
+
+잠시만 생각해 보면, 자원 관리 객체를 통한 할당에러 처리를 구현하는 이런 방식의 코드는 
+어떤 클래스를 쓰더라도 똑같이 나올 것 같습니다. 그러니까 이 코드를 다른 클래스에서도 
+재사용할 수 있도록 잘 만져 놓으면 참 좋겠다는 생각도 들고 말이죠. 이런 용도에 손쉽게 
+쓸 수 있는 손질 방법으로 "믹스인(mixin) 양식"의 기본 클래스를 추천하고 싶습니다. 즉, 
+다른 파생 클래스들이 한 가지의 특정 기능만을 물려받아 갈 수 있도록 설계된 기본 클래스를 
+만들면 됩니다. 지금 경우의 '특정 기능'은 클래스별 new 처리자를 설정하는 기능이겠지요. 
+그 다음엔 그렇게 만든 기본 클래스를 템플릿으로 탈바꿈시킵니다. 이렇게 하면 파생 클래스마
+다 클래스 데이터(원래의 new 처리자를 기억해 두는 정적 맴버 데이터)의 사본이 따로따로 
+존재하게 되지요.
+
+이렇게 설계된 클래스 템플릿으로 얻을 수 있는 효과를 깔끔하게 풀어 보면 두 가지입니다. 
+우선 기본 클래스 부분은 파생 클래스들이 가져야 하는 set_new_handler 함수와 operator new 
+함수를 물려줍니다. 그리고 템플릿 부분은 각 파생 클래스가 (인스턴스화된 클래스가 되면서) 
+currentHandler 데이터 멤버를 따로따로 가질 수 있게 합니다. 말로 하니까 복잡하게 들려
+서 그렇지, 코드를 보시면 어디서 많이 본 듯한 푸근함에 가슴이 촉촉 해지실 것입니다 사실, 
+할당에러 처리 기능을 다른 클래스에서도 쓸 수 있게 되었다는 것밖엔 다른 게 없어요.
+
+template<typename T> // 클래스별 set_new_handler를 지원하는 "믹스인 양식"의 기본 클래스 
+class NewHandlerSupport 
+{ 
+public: 
+	static std::new_handler set_new_handler(std::new_handler p) throw();
+	static void* operator new(std::size_t size) throw(std::bad_alloc);
+	...		// operator new의 다른 버전들을 이 자리에 둡니다. 항목 52를 참고하세요. 
+private:
+	static std::new_handler currentHandler;
+};
+
+template<typename T> 
+std::new_handler NewHandlerSupport<T>::set_new_handler(std::new_handler p) throw()
+{
+	std::new_ handler oldHandler = currentHandler; 
+	currentHandler = p; 
+	return oldHandler; 
+}
+
+template<typename T> 
+void* NewHandlerSupport<T>::operator new(std ::size_t size) throw(std::bad_alloc)
+{
+	NewHandlerHolder h(std::set_new_handler(currentHandler)); 
+	return ::operator new(size); 
+}
+
+// 클래스별로 만들어지는 currentHandler 멤버를 NULL로 초기화합니다.
+template<typename T>
+std::new_handler NewHandlerSupport<T>::currentHandler = 0;
+
+이렇게 만들어진 클래스 템플릿이 있으면, Widget 클래스에 set_new_handler 기능을 추가하는 것은 
+별로 어려워지지 않게 됩니다. 그저 NewHandlerSupport<Widget>로 부터 상속만 받으면 끝이거든요
+(다소 특이해 보일 수 있습니다만, 조금만 읽어 보시면 전후 사정 에 대한 설병이 자세히 나오니 기다려주세요).
+
+class Widget: public NewHandlerSupport<Widget> 
+{ 
+	...		// 이전과 같지만, 이제는 set new handler 혹은 
+			// operator new에 대한 선언문이 빠져 있습니다.
+}
