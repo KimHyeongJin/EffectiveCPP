@@ -9,7 +9,7 @@ operator), 그리고 소멸자(destructor) 인데, 좀더 자세히 말하면 이때 컴파일러가 만
 여러분 대신에 기본 생성자를 선언해 놓습니다. 이들은 모두 public 멤버 이며 inline 
 함수입니다(항목 30 참조). 그러니까, 여러분이 다음과 같이 썼다면
 
-class Empty {};
+class Empty{};
 
 다음과 같이 쓴 것과 근본적으로 대동소이하다는 이야기입니다.
 
@@ -45,4 +45,94 @@ e2 = e1;		// 복사 대입 연산자
 객체 쪽으로 그냥 복사하는 것이 전부이지요. 이해를 돕논 의미에서, 임의의 이름을 T 타입
 의 객체에 연결시켜 주는 NamedObject 라는 템플릿을 예제로 준비해 보았습니다.
 
-
+template<typename T>class NamedObject{public:
+	NamedObject(const char *name, const T& value);
+	NamedObject(const std::string& name, const T& value);	...private:	std::string nameValue;	T objectValue;};이 NamedObject 템픈릿 안에는 생성자가 선언되어 있으므로, 컴파일러는 기본 생성자를
+만들어내지 않을 것입니다. 이게 아주 중요합니다. 다시 말하면, 만약 생성자 자가 꼭 필
+요한 클래스를 만드는 것이 여러분 결정이고 그렇게 했다면, 인자를 받지 않는 생성자를 컴
+파일러가 만들지 않을지 걱정하지 않아도 된다는 말씀입니다.
+
+반면, 복사 생성자나 복사 대입 연산자는 NamedObject에 선언되어 있지 않기에, 이
+두 함수의 기본형이 컴파일러에 의해 만들어집니다(물론 필요하면요). 자, 그러니까 복사 생성
+자의 사용 예는 디음과 같이 나오게 됩니다.
+
+NamedObject<int> no1("Smallest Prime Number", 2);
+
+NamedObject<int> no2(nol); // 여기서 복사 생성자를 호출합니다.
+
+컴파일러가 만든 복사 생성자는 no1.nameValue와 no1.objectValue를 사용해서
+no2.nameValue 및 no2.objectValue를 각각 초기화해야 합니다. nameValue의
+타입은 string인데, 표준 string 타입은 자체적으로 복사 생성지를 갖고 있으므로
+no2.nameValue의 초기화는 string의 복사 생성자에 no1.nameValue를 인자로 넘
+겨 호출함으로써 루어지게 됩니다. 한편, NamedObject<int>::ojectValue의 타입
+은 int(현재의 템플릿 인스턴스화에서 T가 int 이므로)인데, int는 기본제공 타입이므로
+no2.objectValue의 초기화는 no1.objectValue의 각 비트를 그대로 복사해 오는
+것으로 끝납니다.
+
+컴파일러가 만들어 주는 NamedObject<int>의 복사 대입 연산자도 근본적으로는 동작
+원리가 똑같습니다. 하지만 일반적인 것만 놓고 보면, 이 복사 대입 연산자의 동작이 필자가
+설명한 대로 되려면 최종 결과 코드가 '적법해야(legal)' 하고 '이치에 닿아야만(resonable)' 
+합니다. 둘 중 어느 검사도 통과하지 못하면 컴파일러는 operator의 자동생성을 거부해
+버립니다.
+
+예를 들어, NamedObject가 다음과 같이 정의되어 있다고 가정해 보죠. nameValue는
+string에 대한 참조 이고 objectValue는 const T로 되어 있습니다.
+
+template<class T>
+class NamedObject
+{
+public:
+	// 이 생성자는 이제 상수 타입의 name을 취하지 않습니다. nameValue가 비상수
+	// string의 참조자가 되었기 때문입니다. 참조할 string을 가져야 하기 때문에
+	// char*는 없애 버렸습니다.
+	NamedObject(std::string& name, const T& value);
+	...
+			// 위의 경우와 마찬가지로 operator=는 선언된 게
+			// 없다고 가정합니다.
+private:
+	std::string& nameValue;		// 이제 이 멤버는 참조자입니다.
+	const T objectValue;		// 이제 이 멤버는 상수입니다.
+};
+
+자, 그럼 여기서 어떤 일이 일어날지 생각해 봅시다.
+
+std::string newDog("Persephone");	// 필자가 기르던 강아지 이름
+std::string oldDog("Stach");		// 필자가 기르던 강아지 이름
+
+NamedObject<int> p(newDog, 2);
+
+NamedObject<int> s(oldDog, 36);
+
+p = s;		// p에 들어 있는 데이터 멤버에서 어떤 일이 일어나야 할까요?
+
+대입 연산이 일어나기 전, p.nameValue 및 s.nameValue는 string 객체를 참조
+하고 있습니다. 물론 같은 string 객체는 아닙니다. 이때 대입 연산이 일어나면 p.
+nameValue가 어떻게 되어야 할까요? s.nameValue가 참조하는 string을 가리켜야
+할까요? 다시 말해, 참조자 자체가 바뀌어야 하는 걸까요? 이렇게 된다면 C++의 새로운 세
+개를 개척하는 용사의 시대가 열려야 할 것입니다. 왜냐하면 C++의 참조자는 원래 자신이
+참조하고 있는 것과 다른 객체를 참조할 수 없기 때문이죠. 이렇게 할 수 있는 방법이 아예
+없습니다. 그렇다면 p.nameValue가 참조하는 string 객체 자체가 바뀌는게 맞을까요?
+이렇게 되면 그 string에 대한 포인터나 참조자를 품고 있는 다른 객체들, 즉 실제 대입
+연산에 직접적으로 관여하지 않는 객체까지 영향을 받게 됩니다. 정녕 이것이 컴파일러가
+저절로 만들어낸 복사 대입 연산자가 해야 마땅할 일일까요?
+
+어느 쪽을 정하더라도 껄적지끈한 이 문제에 대해, C++는 시원하게 '컴파일 거부' 카드를
+냅니다. 그렇기 때문에, 참조자를 데이터 멤버로 갖고 있는 클래스에 대입 연산을 지원하려
+면 여러분이 직접 복사 대입 연산자를 정의해 주어야 합니다. 데이터 멤버가 상수 객체인
+경우(위에서 한 번 고쳐 쓴 클래스의 objectValue 멤버와 같은 거죠)에도 C++ 컴파일러가
+비슷하게 동작하니 꼭 주의하세요. 상수 멤버를 수정히는 것은 문법에 어긋나기 때문에, 자
+동으로 (컴파일러에 의해) 만들어진 암시적 복사 대입 연산자 내부에서는 상수 멤버를 어떻게
+처리해야 할지가 애매해집니다. 
+
+결정적인 이야기를 하나 더 하겠습니다.
+* 복사 대입 연산자를 private로 선언한 기본 클래스로부터 파생된 클래스의 경우, 이 클래스는 
+암시적 복사 대입 연산자를 가질 수 없습니다. 
+
+컴파일러가 거부해 버리니까요 어쨌든, 파생 클래스에 대해 컴파일러가 만들어 주는 복사 
+대입 연산자는 기본 클래스 부분을 맡도록 되어 있긴 하지만(항목 12 참조), 이렇게 하더라도 
+파생 클래스 쪽에서 호출할 권한이 없는 멤버 함수는 암시적 복사 대입 연산자가 어떻게 호출할 
+수는 없습니다.
+
+이것만은 잊지 말자!
+* 컴파일러는 경우에 따라 클래스에 대해 기본 생성자, 복사 생성자, 복사 대입 연산자, 소멸자
+를 암시적으로 만들어 놓을 수 있습니다.
