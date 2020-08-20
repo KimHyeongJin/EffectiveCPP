@@ -20,7 +20,8 @@ public:
 	Empty(const Empty&rhs){...}	// 복사 생성자
 	~Empty(){...}				// 소멸자: 가상 함수 여부에 대해서는
 								// 아래에서 더 자세히 설명하겠습니다.
-	Empty& operator=(const Empty& rhs){...} // 복사 대입 연산자 };
+	Empty& operator=(const Empty& rhs){...} // 복사 대입 연산자 
+};
 
 이들은 꼭 필요하다고 컴파일러가 판단할 때만 만들어지도록 되어 있지만, 요한 건이
 그리 대단한 것도 아닙니다 이들이 만들어지는 조건을 만족하는 코드는 다음과 같습니다 
@@ -45,9 +46,19 @@ e2 = e1;		// 복사 대입 연산자
 객체 쪽으로 그냥 복사하는 것이 전부이지요. 이해를 돕논 의미에서, 임의의 이름을 T 타입
 의 객체에 연결시켜 주는 NamedObject 라는 템플릿을 예제로 준비해 보았습니다.
 
-template<typename T>class NamedObject{public:
+template<typename T>
+class NamedObject
+{
+public:
 	NamedObject(const char *name, const T& value);
-	NamedObject(const std::string& name, const T& value);	...private:	std::string nameValue;	T objectValue;};이 NamedObject 템픈릿 안에는 생성자가 선언되어 있으므로, 컴파일러는 기본 생성자를
+	NamedObject(const std::string& name, const T& value);
+	...
+private:
+	std::string nameValue;
+	T objectValue;
+};
+
+이 NamedObject 템픈릿 안에는 생성자가 선언되어 있으므로, 컴파일러는 기본 생성자를
 만들어내지 않을 것입니다. 이게 아주 중요합니다. 다시 말하면, 만약 생성자 자가 꼭 필
 요한 클래스를 만드는 것이 여러분 결정이고 그렇게 했다면, 인자를 받지 않는 생성자를 컴
 파일러가 만들지 않을지 걱정하지 않아도 된다는 말씀입니다.
