@@ -180,3 +180,10 @@ C++ 컴파일러의 동작 원리에 관심 있는 분이라면, 참조자는 보통 포인터를 써서 구현�
 2. 기본 제공 double 은 레지스터에 넣어 주지만, double 하나로만 만들어진(사용자 정의 타입) 객체는 레지스터에 
 넣지 않는다.
 3. 사용자 정의 타입의 크기는 변화에 노출되어 있다.
+
+ex)
+int num = 100;
+mov         dword ptr [num],64h  //disassembly
+int num2 = num;
+mov         eax,dword ptr [num]  //disassembly
+mov         dword ptr [num2],eax	//disassembly
