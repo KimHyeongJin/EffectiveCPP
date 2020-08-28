@@ -193,15 +193,17 @@ tb[O] = 'x';
 사본이지, tb.text[0] 자체가 아니라는 거죠. 아마 이게 여러분이 의도한 동작은 아닐 것입
 니다.
 
-여기까지 하고, 잠깐 숨고르기 시간을 가져보는 게 좋겠습니다. 어떤 멤버 함수가 상수 멤버
-(const)라는 것이 대체 어떤 의미일까요? 여기에는 굵직한 양대 개념이 자리 잡고 있습니다.
+여기까지 하고, 잠깐 숨고르기 시간을 가져보는 게 좋겠습니다. 
+
+어떤 멤버 함수가 상수 멤버(const)라는 것이 대체 어떤 의미일까요????
+여기에는 굵직한 양대 개념이 자리 잡고 있습니다.
 하나는 비트수준 상수성[bitwise constness, 다른 말로 물리적 상수성 phiyscal constness)
 이라고도 함]이고, 또 하나는 논리적 상수성(logical constness)입니다.
 
-비트수준 상수성은 어떤 멤버 함수가 그 객체의 어떤 데이터 멤버도 건드리지 않아야(정적
-맴버는 제외합니다) 그 멤버 함수가 'const'임을 인정하는 개념입니다. 
+비트수준 상수성(물리적 상수성)은 어떤 멤버 함수가 그 객체의 어떤 데이터 멤버도 건드리지 
+않아야(정적맴버는 제외합니다) 그 멤버 함수가 'const'임을 인정하는 개념입니다. 
 즉, 그 객체를 구성하는 비트들 중 어떤 것도 바꾸면 안 된다는 것입니다. 
-비트수준 상수성을 사용하면 상수성 위반을 발견하는 데 힘이 많이 들지 않습니다. 
+비트수준 상수성을 사용하면 상수성 위반을 발견하는 게 어렵지 않습니다.
 ***컴파일러는 데이터 멤버에 대해 대입 연산이 수행되었는지만 보면 되니까요.***
 
 사실 C++에서 정의하고 있는 상수성이 비트수준 상수성입니다. 그리고 상수 멤버 함수는 그 
@@ -222,7 +224,84 @@ class CTextBlock
 public:
 	...
 	char& operator[](std::size_t position) const// 부적절한(그러나 비트수준
-	{ return text[position]; }					// 상수성이 있어서 허용되는)
+	{ return pText[position]; }					// 상수성이 있어서 허용되는)
 private:										// operator[]의 선언
 	char* pText;
 };
+
+코드에 나와 있듯이 operator[] 함수가 상수 멤버 함수로 선언되어 있습니다(틀린 건데 말
+이죠). 이 함수는 그럼에도 불구하고 해당 객체의 내부 데이터에 대한 참조자를 버젓이 반환
+합니다(관련된 자세한 사항은 항목 28 참조). 이건 일단 그렇다 치고 operator[]의 내부 
+코드만 보면 pText는 안 간드린다는 점은 확실합니다. 그러니 컴파일러가 이 operator[]에 
+대한 코드를 생성할 때 불평할 이유가 없겠지요. 어쨌든 비트수준에서 상수성을 지키고 있고? 
+컴파일러 선에서는 이것까지만 점검하면 이니까요. 하지만 이로 인해 어떤 사태가 생길지는 
+아래에서 확인해 보도록 합시다.
+
+const CTextBlock cctb("Hello");	// 상수 객체를 선언합니다.
+
+char *pc = &cctb[O];	// 상수 버전의 operator[]를 호출하여 cctb의
+						// 내부 데이터에 대한 포인터를 얻습니다.
+*pc = 'J';				// cctb는 이제 Hello 라는 값을 갖습니다.
+
+확실히 무엇인가가 잘못됐습니다. 어떤 값으로 초기화된 상수 객체를 하나 만들어 놓고 이
+것에다 상수 멤버 함수를 호출했더니 값이 변해버린 것입니다!
+
+논리적 상수성이란 개념은 이런 황당한 상황을 보완하는 대체 개념으로 나오게 되었습니다.
+이 개념을 부르짖는 사람들의 주장은 이렇습니다. 상수 멤버 함수라고 해서 객체의 한 비트
+도 수정할 수 없는 것이 아니라 일부 몇 비트 정도는 꿀 수 있되, 그것을 사용자측에서
+알아채지 못하게만 하면 상수 멤버 자격이 있다는 것입니다. 예를 하나 들어 보겠습니다.
+CTextBlock 클래스는 문장 구역의 길이를 시용자들이 요구할 때마다 이 정보를 캐시해
+둘 수 있을 텐데요, 그래서 다음과 같은 멤버를 둘 수 있을 것입니다.class CTextBlock 
+{
+public:
+	...
+	std::size_t length() const;
+private:
+	char* pText;
+	std::size_t textLength;		// 바로 직전에 계산한 텍스트 길이
+	bool lengthIsValid;			// 이 길이가 현재 유효한가?
+};
+
+std::size_t CTextBlock::length() const
+{
+	if(!lengthIsValid)
+	{
+		textLength = std::strlen(pText);// 에러! 상수 멤버 함수 안에서는
+		lengthIsValid = true;			// textLength 및 lengthIsValid에
+	}									// 대입할 수 없습니다.
+	return textLegnth;
+}
+
+length의 구현은 너무나도 자명하게 '비트수준 상수성(물리적 상수성)'과 거리가 멀다.
+
+textLength 및 lengthIsValid가 바뀔 수 있으니까요. 그렇지만 CTextBlock의
+상수 객체에 대해서는 당연히 아무 문제가 없어야 할 것 같은 코드입니다. 컴파일러는 에러
+를 쏟아낼 게 뻔합니다. 컴파일러의 검열을 통과하려면 비트 수준의 상수성 이 지켜져야 합
+니다. 이런 상황에서는 어떻게 해야 할까요?
+
+해답은 단순합니다. const에 맞서는 C++의 변신 비기, mutable을 사용하는 것입니다.
+mutable은 비정적 데이터 멤버를 비트수준 상수성의 족쇄에서 풀어 주는 아름다운 오색
+약수 같은 키워드입니다. 아래를 보시죠.
+
+class CTextBlock 
+{
+public:
+	...
+	std::size_t length() const;
+private:
+	char* pText;
+	mutable std::size_t textLength;		// 이 데이터 멤버들은 어떤 순간에도
+	mutable bool lengthIsValid;			// 수정이 가능합니다. 심지어 상수 멤버
+};										// 함수 안에서도 수정 할 수 있습니다.
+
+std::size_t CTextBlock::length() const
+{
+	if(!lengthIsValid)
+	{
+		textLength = std::strlen(pText);// 이제 문제 없습니다.
+		lengthIsValid = true;			// 문제 없습니다.
+	}
+	return textLegnth;
+}
+
+상수 멤버 및 비상수 멤버 함수에 코드 중복 현상을 피하는 방법
