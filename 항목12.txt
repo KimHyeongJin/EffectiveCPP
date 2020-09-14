@@ -1,0 +1,95 @@
+항목 12: 객체의 모든 부분을 빠짐없이 복사하자
+
+객체의 안쪽 부분을 캡슐화한 객체 지향 시스템 중 설계가 잘 된 것들을 보면, 객체를 복사
+하는 함수가 딱 둘만 있는 것을 알 수 있습니다. 복사 생성자와 복사 대입 연산자라고, 성격
+에 따라 이름름도 적절히 지어져 있지요. 이 둘을 통틀어 객체 복사 함수(copying funct-
+ion)라고 부르고요. 항목 5를 보신 분은 아시죠? 객체 복사 함수는 컴파일러가 필요에 따라 
+만들기도 합니다. 그리고 컴파일러가 생성한 복사 함수는 비록 저절로 만들어졌지만 동작은
+기본적인 요구에 아주 충실합니다. 복사되는 객체가 갖고 있는 데이터를 빠짐없이 복사한다,
+바로 이겁니다.
+
+객체 복사 함수를 여러분이 선언한다는 것은, 컴파일러가 만든 녀석의 기본 동작에 뭔가 마
+음에 안 드는 것이 있다는 이야기입니다. 이에 대해 컴파일러도 썩 반기는 분위기는 아니라
+는 듯, 꽤나 까칠한 자세로 여러분을 골탕 먹이려고 합니다. 어떻게 하는고 하니, 여러분이
+구현한 복사 함수가 거의 확실히 틀렸을 경우에도 입을 다물어 버립니다.
+
+고객(customer)을 타내는 클래스가 하나 있다고 가정합시다. 이 클래스의 복사 함수는 개
+발자가 직접 구현했고, 복사 함수(들)를 할 호출할 때마다 로그를 남기도록 작성되었습니다.
+
+void logCall(const std::string& funcName);	// 로그 기록내용을 만듭니다.
+
+class Customer
+{
+public:
+	...
+	Customer(const Customer& rhs);
+	Customer& operator=(const Customer& rhs);
+	...
+private:
+	std::string name;
+};
+
+Customer::Customer(const Customer& rhs):name(rhs)	// rhs의 데이터를 복사
+{
+	logCall("Customer copy constructor");
+}
+
+Customer::Customer& operator=(const Customer& rhs)
+{
+	logCall("Customer copy assignment operator");
+	name = rhs.name;	// rhs의 데이터를 복사
+	return *this;		// 항목 10을 참고하세요.
+}
+
+문제될 것이 하나도 없어 보입니다. 실제로 그렇고요. 그런데 데이터 멤버 하나를 Customer
+에 추가하면서 행복에 금이 가기 시작합니다.
+
+clas Date{...};		// 날짜 정보를 위한 클래스
+
+class Customer
+{
+public:
+	...
+private:
+	std::string name;
+	Date lastTransaction;
+};
+
+이렇게 되고 나면, 복사 함수의 동작은 완전 복사가 아니라 부분 복사(partial copy)가 됩니
+다. 고객의 name은 복사하지만, lastTransaction은 복사하지 않습니다. 여기서 주의해
+야 할 점이 나오는데, 이런 상황에 대해 경고를 해 주는 컴파일러가 거의 없습니다.
+컴파일러 경고 수준을 최대로 높여도 마찬가지라니까요(항목 53 참조). 여러분 멋대로 복사
+함수를 작성하는 데 대한 컴파일러의 피맺힌 복수라고 보시면 되겠습니다. 컴파일러가 복
+사 함수를 정성스레 마련해 주겠다는데 여러분이 거절했으니, 여러분 구현이 죽이 되든 밥
+이 되든 입도 뻥끗 안 하는 것입니다. 결국 우리가 할 일은 한 가지입니다. 클래스에 데이터
+멤버를 추가했으면, 추가한 데이터 멤버를 처리하도록 복사 함수를 다시 작성할 수밖에 없
+는 거죠. 그뿐 아니라 생성자도 전부 갱신해야 할 것이고(항목 4 및 항목 45 참조) 비표준형
+perator= 함수도 전부 바꿔 줘야 합니다(항목 10에 예제가 나와 있습니다). 여러분이 깜빡했다
+고 해서 컴파일러가 알려 줄 것 같죠? 기대를 버리시죠.
+
+이 문제가 가장 사악하게 프로그래머를 괴롭히는 경우가 하나 있는데, 바로 클래스 상속입
+니다. 아래의 코드를 봐 주세요.
+
+class PriorityCustomer:public Customer	// 파생 클래스
+{
+public:
+	...
+	PriorityCustomer(const PriorityCustomer& rhs);
+	PriorityCustomer& operator=(const PriorityCustomer& rhs);
+	...
+private:
+	int priority;
+};
+
+PriorityCustomer::PriorityCustomer(const PriorityCustomer& rhs)
+:priority(rhs.priority)
+{
+	logCall("PriorityCustomer copy constructor");
+}
+
+PriorityCustomer::PriorityCustomer& operator=(const PriorityCustomer& rhs)
+{
+	logCall("PriorityCustomer copy assignment operator");
+	priority = rhs.priority;
+	return *this;
+}
