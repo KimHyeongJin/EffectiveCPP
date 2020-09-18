@@ -76,3 +76,28 @@ delete 표현식 에도 []을 안 쓰면 됩니다.
 줘야 하는가에 대한 언급을 달아 주는 책임을 해당 typedef 타입의 작성자가 져야 한다
 고 압박을 가하는 의미로 볼 수 있으니까요. 예를 들어, 어떤 typedef 타입이 다음과 같
 이 되어 있다고 가정합시다.
+
+typedef std::string AddressLines[4];	// 주소는 네 줄로 되어 있고, 각각은
+										// string입니다.
+
+AddressLines는 보다시피 배열입니다. 따라서 아라채럼 new를 사용하면,
+
+std::string* pa1 = new AddressLines;	// "new AddressLines"는 string*을
+										// 반환한다는 점을 잊으면 안 됩니다.
+										// "new string[4]" 이거든요.
+
+delete 역시 배열(array) 형태가 되어야 문단속이 제대로 됩니다.
+
+delete pa1;		// 무슨 일이 생길지도 모른다니까요!
+delete[] pa1;	// 좋아요.
+
+머리 속이 심난해지지 않으려면, 배열 타입을 typedef 타입으로 만들지 않는 것이 좋습
+니다. 요즘처럼 좋은 세상에는 결코 어렵지 않습니다. 표준 C++ 라이브러리(항목 54 참조)
+에는 string 이라든지 vector 같은 좋은 클래스 템플릿이 있어서, 잘 활용하면 동적 할당
+배이 필요해질 경우가 거의 없기 때문입니다. 위의 예제를 가지고 보면, AddressLines
+는 string의 vector로 정의해도 됩니다. 그러니까 vector<string> 타입으로 만들
+라는거죠.
+
+이것만은 잊지 말자!
+*	new 표현식에 []를 썼으면, 대응되는 delete 표현식에도 []를 써야 합니다. 마찬가지로
+	new 표현식에 []를 안 썼으면, 대응되는 delete 표현식에도 []를 쓰지 말아야 합니다.
