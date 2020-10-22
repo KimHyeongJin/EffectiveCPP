@@ -205,11 +205,11 @@ void PrettyMenu::changeBackground(std::isteam&& imgSrc)
 
 이 전략은 대개 '진짜 객체의 모든 데이터를 별도의 구현(implementation) 객체에 넣어두고,
 그 구현 객체를 가리키는 포인터를 진짜 객체가 물고 있게 하는 식으로 구현합니다. 많은
-분들께서 'pimp1 관용구'라고들 부르는 이 구현 방법은 항목 31에서 자세히 다루고 있으니
+분들께서 'pimpl 관용구'라고들 부르는 이 구현 방법은 항목 31에서 자세히 다루고 있으니
 참고하세요. 어쨌든 이 방법을 PrettyMenu에 적용하면, 다음과 같은 형태의 코드가 나올
 것입니다.
 
-struct PMImp1		// PMImp1 = "PrettyMenu.pImp1"; PMImp1이 struct로
+struct PMImpl		// PMImpl = "PrettyMenu.pImpl"; PMImpl이 struct로
 {					// 선언된 데에는 이유가 있습니다. 밑에서 확인하세요.
 	std::tr1::shared_ptr<Image> bgImage;
 	int imageChange;
@@ -220,7 +220,7 @@ class PrettyMenu
 ...
 private:
 	Mutex mutex;
-	std::tr1::shared_ptr<PMImp1> pImp1;
+	std::tr1::shared_ptr<PMImpl> pImpl;
 };
 
 void PrettyMenu::changeBackground(std::istream& imgSrc)
@@ -228,18 +228,18 @@ void PrettyMenu::changeBackground(std::istream& imgSrc)
 	using std::swap;	// 항목 21를 보세요.
 	Lock m1(&mutex);	// 뮤텍스를 잡고 들어갑니다.
 	// 객체의 데이터 부분을 복사합니다.
-	std::tr1::shared_ptr<PMImp1> pNew(new PMImp1(*pImp1));
+	std::tr1::shared_ptr<PMImpl> pNew(new PMImpl(*pImpl));
 
 	pNew->bgImage.reset(new Image(imgSrc)); // 사본을 수정합니다.
 	++pNew->imageChange;
-	swap(pImp1, pNew);	// 새 데이터로 바꿔 넣어 진짜로 배경그림을 바꿉니다.
+	swap(pImpl, pNew);	// 새 데이터로 바꿔 넣어 진짜로 배경그림을 바꿉니다.
 }						// 뮤텍스를 놓습니다.
 
-PMImp1이 클래스가 아니라 구조체로 만들어져 있는게 보이실 텐데요. 제가 그렇게 정한
-것입니다. PrettyMenu 클래스에서 pImp1이 private 멤버로 되어 있어서 구현 객체
+PMImpl이 클래스가 아니라 구조체로 만들어져 있는게 보이실 텐데요. 제가 그렇게 정한
+것입니다. PrettyMenu 클래스에서 pImpl이 private 멤버로 되어 있어서 구현 객체
 의 데이터가 바로 캡슐화되기 때문이죠. 사실 클래스로 만들어 놓았어도 그다지 니뿔 건 없습
 니다. 조금 불편해진다는 점만 빼면 말이죠(참, 객체 지향에 목숨 건 분들은 이 부분을 보시변 
-학을 떼실 겁니다). 취향에 따라서는 PMImp1을 PrettyMenu 안에 중첩 시킬 수도 있지만, 
+학을 떼실 겁니다). 취향에 따라서는 PMImpl을 PrettyMenu 안에 중첩 시킬 수도 있지만, 
 이 부분은 코드의 예외 안전성 문제와 하등 상관이 없는 패키징 문제이므로 여기서는 넘어갑시다.
 
 '복사-후-맞바꾸기' 전략은 객체의 상태를 '전부 바꾸거나 혹은 안 바꾸거나(all-or-nothing)'
