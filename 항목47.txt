@@ -1,9 +1,9 @@
 항목 47: 타입에 대한 정보가 필요하다면 특성정보 클래스를 사용하자
 
-STL은 기본적으로 컨테이너(container) 및 반복자(iterator), 알고리즘(algorithm)의 템플릿으로
-구성되어 있지만, 이 외에 유틸리티(utility)라고 불리는 템플릿도 몇 개 들어 있습니다. 이들중 
-하나가 advance 라는 이름의 템플릿인데, 이 템플릿이 하는 일은 지정된 반복자를 지정된 거리(dist
--anc)리만큼 이동시키는 것입니다.
+STL은 기본적으로 컨테이너(container) 및 반복자(iterator), 알고리즘(algorithm)의 
+템플릿으로 구성되어 있지만, 이 외에 유틸리티(utility)라고 불리는 템플릿도 몇 개 들어 
+있습니다. 이들중 하나가 advance 라는 이름의 템플릿인데, 이 템플릿이 하는 일은 지정된 
+반복자를 지정된 거리(distance)리만큼 이동시키는 것입니다.
 
 template<typename IterT, typename DistT>	// iter 를 d 단위만큼
 void advance(IterT& iter, DistT d);			// 전진시킵니다. d < 0 이면
@@ -131,7 +131,7 @@ iterator_traits 클래스가 동작하는 방법은 이렇습니다. iterator_traits<IterT>
 
 iterator_traits는 이 반복자 범주를 두 부분으로 니누어 구현합니다. 첫 번째
 부분은 사용자 정의 반복자 타입에 대한 구현인데, 사용자 정의 반복자 타입으로 하여금
-iterator_category라는 이름의 typedef 타입을 내부에 가질 것을 여구사항으로 둡
+iterator_category라는 이름의 typedef 타입을 내부에 가질 것을 요구사항으로 둡
 니다. 이때 이 typedef 타입은 해당 태그 구조체에 대응되어야 합니다. 예를 들어, deque
 의 반복자는 임의 접근 자이므로, deque 클래스(템플릿)에 쓸 수 있는 반복자는 다음과
 같은 형태일 것입니다.
