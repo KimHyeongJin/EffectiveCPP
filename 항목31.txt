@@ -398,7 +398,16 @@ private:
 };
 
 이제 RealPerson은 준비되었고 남은 것은 Person::create 함수인데, 정말 간단하게
-만들 수 있습나다.std::tr1::shared_ptr<Person> Person::create(const std::string& name, 											const Date& birthday, 											const Address addr){	return std::tr1::shared_ptr<Person>(new RealPerson(name, birthday, addr));}Person::create 함수를 현장 느낌에 좀더 가깝게 구현하고 싶다면 사용자가 원하는 대
+만들 수 있습나다.
+
+std::tr1::shared_ptr<Person> Person::create(const std::string& name, 
+											const Date& birthday, 
+											const Address addr)
+{
+	return std::tr1::shared_ptr<Person>(new RealPerson(name, birthday, addr));
+}
+
+Person::create 함수를 현장 느낌에 좀더 가깝게 구현하고 싶다면 사용자가 원하는 대
 로 다른 타입의 파생 클래스 객체를 생성할 수 있게끔 만들면 될 것입니다. 이를테면 매개
 변수를 더 받도록 해서 그 매개변수의 값에 따라 타입을 다르게 한다든지, 아니면 파일 혹
 은 데이터 베이스, 환경 변수 등의 외부 저장소로부터 데이터를 읽어서 그 데이터에 따라 타
@@ -459,4 +468,4 @@ private:
 	방법은 핸들 클래스와 인터페이스 클래스입니다.
 
 *	라이브러리 헤더는 그 자체로 모든 것을 갖추어야 하며 선언부만 갖고 있는 형태여야
-	합니다. 이 규칙은 템플릿이 쓰이거나 쓰이지 않거나 동일하게 적용합시다. 
+	합니다. 이 규칙은 템플릿이 쓰이거나 쓰이지 않거나 동일하게 적용합시다.
