@@ -1,0 +1,34 @@
+항목 46: 타입 변환이 바람직할 경우에는 비멤버 함수를 클래스 템플릿 안에 정의해 두자.
+
+모든 매개변수에 대해 암시적 타입 변환이 되도록 만들기 위해서는 비멤버 함수밖에 방법이
+없다는, 이번 항목과 조금 비슷한 이야기는 이전에 항목 24에서 이유까지 말씀드린 바 있습
+니다. 그 당시, Rational 클래스의 operator* 함수가 예제로 나왔었죠. 이번 항목을
+편하게 읽어 가시려면 일단 이 예제를 눈에 잘 넣어두는 것이 좋습니다. 항목 24에 나온 그
+예제를 한 번 더 살짝 우려내고 약간의 조미료를 친 것을 잘근잘근 씹으며 이야기를 넓혀갈
+생각이거든요. 어떻게 할 것인고 하니, Rational 클래스와 oprator* 함수를 템플릿으로
+만들 것입니다.
+
+template<typename T>
+class Rational
+{
+public:
+	Rational(const T& numerator = 0,	// 매개변수가 참조자로 전달되는 이유는
+			const T& denominator = 1);	// 항목 20을 보면 나옵니다.
+	const T numerator() const;		// 반환값 전달이 여전히 값에 의한 전달인
+	const T denominator() const;	// 이유는 항목 28을 보면 나오고요.
+	...							// 이들 함수가 const인 이유는 항목 3에서...
+};
+
+template<typename T>
+const Rational<T> operator*(const Rationa<T>& lhs, 
+							const Rationa<T>& rhs){...}
+
+항목 24에서도 그랬듯, 혼합형(mixed-mode) 수치 연산은 여전히 필요합니다. 다음의
+코드가 컴파일되어야 하는 거죠. 그런데 이미 항목 24에서 동작하는 코드를 그대로 가져
+왔기 때문에, 컴파일이 안 되는 게 더 이상할 것 같습니다. 차이점이라면 Rational 및
+operator* 부분이 이제는 템플릿이라는 것밖엔 없으니까요.
+
+Rational<int> oneHalf(1, 2);		// Rational이 이제 템플릿이란 것만 빼면
+									// 이 예제는 항목 24의 것과 똑같습니다.
+
+Rational<int> result = oneHalf * 2;// 그런데 에러입니다. 컴파일이 안되요.
