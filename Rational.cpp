@@ -1,9 +1,14 @@
 #include "Rational.h"
 
 
+template<typename T, typename U> T* make(const U& u)
+{
+	return new T{ u };//중괄호???, Uniform Initialization(https://modoocode.com/286)
+}
 
 int main()
 {
+	int* pNum = make<int>(2);
 	Rational<int> oneHalf(1, 2);		// Rational이 이제 템플릿이란 것만 빼면
 									// 이 예제는 항목 24의 것과 똑같습니다.
 
