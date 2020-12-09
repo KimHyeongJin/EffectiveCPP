@@ -90,7 +90,7 @@ public:
 	...
 	// operator* 함수를 선언합니다(자세한 내용은 아래에 나와요)
 	friend const Rational operator*(const Rational& lhs, 
-							const Rational& rhs)
+							const Rational& rhs);
 };
 
 // operator* 함수를 정의합니다.
@@ -107,3 +107,56 @@ oneHalf 객체가 Rational<int> 타입으로 선언되면 Rational<int> 클래스가
 하지만 이 코드는 컴파일은 되지만, 링크가 안됩니다. 이 문제는 조금 있다가 
 바로 잡겠습니다만, 우선 필자는 Rational 안에 operator*를 선언하는데 
 사용한 문법에 대해 몇 가지 말씀 드리고 싶습니다.
+
+클래스 템플릿 내부에서는 템플릿의 이름(<> 뗀 것)을 그 템플릿 및 매개변수의
+줄임말로 쓸 수 있습니다. 그러니까 Rational<T> 안에서는 Rational이라고만
+써도 Rational<T>로 먹힌다는 거죠. 위의 예제에서야 몇 자 덜 치는 정도이지만,
+매개변수가 여러 개이거나 매개변수 이름이 길거라 할 경우에는 이처럼 고마운 것도
+없습니다. 손가락도 덜 피곤하고 게다가 코드도 깔끔해지거든요. 위의 예제에서 이
+걸 써먹어 봤습니다. operator* 함수의 선언부를 보시면 매개변수 타입과 반환
+타입이 Rational<T>가 아니라 Rational로 되어 있죠. 사실 다음과 같이 선언
+하더라도 똑깥은 의미입니다.
+
+template<typename T>
+class Rational
+{
+public:
+	...
+	// operator* 함수를 선언합니다(자세한 내용은 아래에 나와요)
+	friend const Rational<T> operator*(const Rational<T>& lhs, 
+							const Rational<T>& rhs);
+	...
+};
+
+우리 마음속엔 이미 더 쓰기 쉬운(그리고 더 흔히 쓰이는) 줄임표기 형태가 살표시
+자리잡고 있음을 느낄 수 있을 것입니다.
+
+자, 다시 마음을 추스르고 링크 문제로 돌아옵시다. 지금의 혼합형 호출 코드는
+컴파일까지는 잘 됩니다. 우리가 어떤 함수를 호출하려는지 컴파일러가 알 수
+있게 됐으니까요.(Rational<int> 두 개를 받아들이는 operator* 함수죠).
+그런데 이 함수는 Rational안에서 선언만 되어 있지, 거기에서 정의까지
+되어 있는 것은 아닙니다. 클래스 외부에 있는 operator* 템플릿에서 함수
+정의를 제공하도록 만들고 싶은 것이 우리들 의되였지만, 바람대로 일이 풀리지는
+않았습니다. 어떤 함수를 우리들이 직접 선언했으면(방금 Rational 템플릿 
+안에다가 한 일이 그거죠), 그 함수를 정의하는 일도 우리가 직접 책임을
+저야 하는 것입니다. 그런데도 함수 정의는커녕 코빼기도 보이지 않으니,
+링커가 못 찾는 게 당연하죠.
+
+가장 간단하게 해결하려면, operator* 함수의 본문을 선언부와 붙이면 됩니다.
+
+template<typename T>
+class Rational
+{
+public:
+	...
+	// 항목 24의 그 코드 동일한 구현
+	friend const Rational operator*(const Rational& lhs, 
+							const Rational& rhs)
+	{
+		return Rational(lhs.numerator()*rhs.numerator(), 
+		lhs.denominator()*rhs.denominator());
+	}
+};
+
+드디어 끝까지 돌아가는 코드가 나왔습니다. operator* 함수의 혼합형 호출
+코드가 이제는 컴파일도 되고, 링크도 되고, 실행도 됩니다.
