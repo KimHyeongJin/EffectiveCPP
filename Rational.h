@@ -16,6 +16,7 @@ public:
 */
 
 
+// 컴파일은 되지만 링크에러가 발생하는 예제
 template<typename T>
 class Rational2
 {
