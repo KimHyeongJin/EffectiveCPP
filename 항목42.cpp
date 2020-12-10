@@ -63,7 +63,7 @@ void workWithIterator( IterT iter )
 template< typename T >
 void Func( const T& container )
 {
-	T::const_iterator iter( container.begin() );//타입이 아닌 결로 가정된다. 템플릿 매개변수 T에 종속적 이름 T::const_iterator
+	T::const_iterator iter( container.begin() );//타입이 아닌 결로 가정된다. 템플릿 매개변수 T 클래스의 정적 데이터 멤버 변수 const_iterator
 	//typename T::const_iterator iter( container.begin() );
 }
 

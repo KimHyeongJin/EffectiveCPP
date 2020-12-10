@@ -10,7 +10,7 @@ int main()
 {
 	int* pNum = make<int>(2);
 	Rational<int> oneHalf(1, 2);		// Rational이 이제 템플릿이란 것만 빼면
-									// 이 예제는 항목 24의 것과 똑같습니다.
+										// 이 예제는 항목 24의 것과 똑같습니다.
 
 	//Rational<int> result = oneHalf * 2;// 그런데 에러입니다. 컴파일이 안되요.
 
