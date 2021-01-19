@@ -76,7 +76,7 @@ void* operator new(std::size_t size) throw(std::bad_alloc)
 	using namespace std;
 
 	// 경계표지 2개를 앞뒤에 붙일 수 있을 만큼만 메모리 크기를 늘립니다.
-	size_t realSize = size + 2*sizeof(int);			
+	size_t realSize = size + 2*sizeof(int);	
 
 	// malloc을 호출하여 실제 메모리를 얻어 냅니다.
 	void* pMem = malloc(realSize);
