@@ -148,4 +148,63 @@ operator new[] 함수가 호출될 수 있습니다. 그리고 파생 클래스 객체는 대체적으로 �
 클래스 객체보다 더 크다는 것도 문제입니다. 그렇기 때문에, Base::operator new[] 안에서
 조차도 배열에 들어가는 객체 하나의 크기가 sizeof(Base)라는 가정을 할 수 없습니다. 이
 말을 풀이해 보면, Base::operator new[]에서 할당한 배열 메모리에 들어가는 객체의 개수
-를 (요구된 바이트 수/sizeof(Base))로 계산할 수 없다는 뜻이 나오는 것이죠.
+를 (요구된 바이트 수/sizeof(Base))로 계산할 수 없다는 뜻이 나오는 것이죠. 둘째, 
+operator new[]에 넘어가는 size_t 타입의 인자는 객체들을 담기에 딱 맞는 메모리 양보다
+더 많게 설정되어 있을 수도 있습니다. 동적으로 할당된 배열에는 배열 원소의 개수를 담기
+위한 자투리 공간이 추가로 들어간다고 설명한 항목 16의 내용을 기억하시는 분이라면 고개를
+끄덕이실 것입니다.
+
+operator new를 작성할 경우에 지켜야 하는 관례에 대한 이야기는 이것으로 끝입니다.
+적지 않은 이야기를 한 것 같네요. 다음은 operator delete를 작성할 때의 관례인데,
+operator new의 경우보다 더 간단합니다. C++는 널 포인터에 대한 delete 적용이
+항상 안전하도록 보장한다는 사실만 잊지 않으면 만사 OK입니다. 여러분이 할 일은 이보장을
+유지하는 것뿐이고요. 그럼, 간단히 작성해 본 비멤버 버전 operator delete의 의사 코드
+를 보시겠습니다.
+
+void operator delete(void* rawMemory) throw()
+{
+	if(0 == rawMemory)return;	// 널 포인터가 delete되려고 할 경우에는 아무것도
+								// 하지 않게 합니다.
+	rawMemory가 가리키는 메모리를 해제합니다;
+}
+
+operator delete의 클래스 전용 버전도 단순하기는 매한가지입니다. 삭제될 메모리의 크기를
+점검하는 코드를 넣어 주어야 한다는 점만 빼면 말이죠. 클래스 전용의 operator new가 "틀린"
+크기의 메모리 요청을 ::operator new 쪽으로 넘기도록 구현되었다고 가정하면, 클래스 전용의
+operator delete 역시 "틀린 크기로 할당된" 메모리의 삭제 요청을 ::operator delete
+쪽으로 전달하는 식으로 구현하면 되겠네요.
+
+class Base
+{
+	public:
+		static void* operator new(std::size_t size) throw(std::bad_alloc);
+		static void* operator delete(void* rawMemory, std::size_t size) throw();
+		...
+};
+
+void Base::operator delete(void* rawMemory, std::size_t size) throw()
+{
+	if(0 == rawMemory)return;	// 널 포인터에 대한 점검
+	if(size != sizeof(Base))			// 크기가 "틀린" 경우, 표준 operator
+	{									// delete가 메모리 삭제 요청을 맡도록 합니다.
+		::operator delete(rawMemory);
+		return;
+	}
+	rawMemory가 가리키는 메모리를 해제합니다;
+	return;
+}
+
+마지막으로 재미있는 이야기를 하나 더 해드리죠. 가상 소멸자가 없는 기본 클래스부터 파상된 클래스의
+객체를 삭제하려고 할 경우에는 operator delete로 C++가 넘기는 size_t 값이 엉터리일 수 있습니다.
+이것만으로도 기본 클래스에 가상 소멸자를 꼭 두어야 하는 충분한 이유가 선다고 말씀드릴 수 있을 것
+같습니다. 하기야 항목 7을 보시면 확실히 더 괜찮은 다른 이유도 확인하실 수 있지 하지만요. 어쨌든,
+기본 클래스에서 가상 소멸자를 빼먹으면 operator delete 함수가 똑바로 동작하지 않을 수 있다는 
+사실만 머리에서 놓치지 마세요.
+
+이것만은 잊지 말자!
+	*관례적으로, operator new 함수는 메모리 할당을 반복해서 시도하는 무한 루프를 가져야 하고,
+	메모리 할당 요구를 만족시킬 수 없을 때 new 처리자를 호출해야 하며, 0바이트에 대한 대책도
+	있어야 합니다. 클래스 전용 버전은 자신이 할당하기로 예정된 크기보다 더 큰(틀린) 메모리 블록
+	에 대한 요구도 처리해야 합니다.
+	*operator delete 함수는 널 포인터가 들어왔을 때 아무 일도 하지 않아야 합니다.
+	클래스 전용 버전의 경우에는 예정 크기보다 더 큰 블로을 처리해야 합니다.
