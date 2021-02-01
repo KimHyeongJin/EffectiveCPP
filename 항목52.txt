@@ -112,3 +112,49 @@ Widget* pw = new (std::cerr) Widget;
 
 // 위치지정 delete
 void* operator delete(void*, std::ostream&) throw();
+
+매개변수를 추가로 받아들인다는 면에서 위치지정 new와 비슷하므로,이런 형태의 operator 
+delete를 가리켜 위치지정 delete라고 합니다. 그런데 지금의 Widget에는 operator
+delete의 위치지정 버전이 마련되어 있지 않기 때문에, 런타임 시스템 쪽에서 위치지정
+new로 저질러버린 메모리 할당을 어떻게 되돌려야 할지 갈팡질팡 할 수 밖에 없습니다.
+어쩌겠어요? 결국 아무것도 하지 않습니다. 그로니까, 앞에서 보신 코드에서 Widget 생성
+자가 예외를 던지면 어떤 operator delete도 호출되지 않는다는 말이죠.
+
+복잡해 보이나요? 정말 단순한 규칙입니다. 추가 매개변수를 취하는 operator new 함수
+가 있는데 그 것과 똑같은 추가 매개변수를 받는 operator delete가 짝으로 존재하지
+않으면, 이 new에 해당 매개변수를 넘겨서 할당한 메모리를 해제해야 하는 상황이 오더라
+도 어떤 operator delete도 호출되지 않는다는 점만 기억하시면 됩니다. 위의 코드에서
+생길 수 있는 메모리 누출을 제거하려면, 로그 기록용 인자를 받는 위치지정 new와 짝이
+되는 위치지정 delete를 Widget 클래스에 넣어 주어야 한다는 결론이 나오는 거죠.
+다음을 봐주세요.
+
+class Widget
+{
+	public:
+	...
+	static void* operator new(std::size_t size, std::ostream& logStrean)
+		throw(std::bad_alloc);
+	static void operator delete(void* pMemory) throw();
+	static void operator delete(void* pMemory, std::ostream& logStream) 
+		throw();
+	...
+};
+
+이렇게 바꿔 두면, 아래의 문장이 실행되다가 Widget 생성자에서 예외가 발생되더라도,
+
+Widget* pw = new (std::cerr) Widget;	// 이전과 같은 사용자 코드 하지만
+										// 메모리 누출 없음
+
+이제는 위치지정 new와 짝이 되는 위치지정 delete가 (런타임 시스템에 의해) 자동으로
+호출됩니다. Widget으로 하여금 메모리 누출을 막을 수 있도록 길을 만들어 주는 것이죠.
+
+그런데 위의 문장에서 Widget 생성자가 예외를 던지지 않았고(대개 이렇게 되겠지요) 사용
+자 코드의 delete 문까지 다다랐다고 하면 어떤 일이 생길까요?
+
+delete pw;	// 기본형의 operator delete가 호출됩니다.
+
+주석에 써두었듯이, 이 경우에는 런타임 시스템이 기본형의 operator delete를 호출합
+니다. 위치지정 버전을 않는다는 것입니다. 위치지정 delete가 호출되는 경우는 위치지정
+new의 호출에 '묻어서' 함께 호출되는 생성자에서 예외가 발생할 뿐입니다. 그러니까,
+포인터(위의 pw와 같은)에 delete를 적용했을 때는 절대로 위치지정 delete를 호출하는
+쪽으로 가지 않습니다.
