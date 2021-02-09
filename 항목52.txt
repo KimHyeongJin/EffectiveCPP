@@ -158,3 +158,117 @@ delete pw;	// 기본형의 operator delete가 호출됩니다.
 new의 호출에 '묻어서' 함께 호출되는 생성자에서 예외가 발생할 뿐입니다. 그러니까,
 포인터(위의 pw와 같은)에 delete를 적용했을 때는 절대로 위치지정 delete를 호출하는
 쪽으로 가지 않습니다.
+
+결국 이 말은 이렇게 풀이할 수 있습니다. 어떤 위치지정 new 함수와 조금이라도 연관된
+모든 메모리 누출을 사전에 봉쇄하려면, 표준 형태의 operator delete를 기본으로 마련
+해 두어야(객체 생성 도중에 예외가 던져지지 않았을 경우에 대비해) 하고 그와 함께 위치지
+정 new와 똑같은 추가 매개변수를 받은 위치지정 delete도 빼먹지 말아야(예외가 던져졌
+을 때에 대비해서) 한다고 말이죠. 한 번 해 보세요. 제 이야기만 잘 들으면 밤에 자다가도
+떡이 생기지는 않겠지만 메모리 누출 걱정 때문에 베개를 눈물로 적시는 일은 안 생긴다니
+까요. 최소한, 원인조차 찾기 힘든 이런 메모리 누출만큼은 확실히 안 생긴다고 장담합니다.
+
+단, 실수로 빼먹지 말아야 하는 부분이 하나 있습니다. 바깥쪽 유효범위에 있는 어떤 함수의
+이름과 클래스 멤버 함수의 이름이 같으면 바깥쪽 유효범위의 함수가 '이름만 같아도' 가려
+지게 되어 있단 말이죠(항목33 참조). 때문에 여러분은 사용자 자신이 쓸 수 있다고 생각하
+는 다른 new들(표준 버전도 포함해서)을 클래스 전용의 new가 가리지 않도록 각별히 신경을
+쓰셔야 합니다. 예를 들어 달랑 위치지정 new만 선언된 기본 클래스가 버젓이 사용자에게
+제공될 경우, 사용자 쪽에서는 표준 형태의 new를 써 보려다가 안 되는 것을 발견하고 황
+당한 슬픔에 빠진다는 것입니다.
+
+class Base
+{
+	public:
+		...
+		// 이 new가 표준형태의 전역 new를 가립니다.
+		static void* operator new(std::size_t size, 
+					std::ostream& logStream):throw(std::bad_alloc);
+		...
+};
+
+// 에러! 표준 형태의 전역 operator new가 가려지거든요.
+Base* pb = new Base;
+
+// 이건 문제없습니다. Base의 위치지정 new를 호출합니다.
+Base* pb = new (std::cerr) Base;
+
+이러한 이름 가리기에 대해서는 항목 33에 자세히 다루어 놓았지만, 메모리 할당 함수를 작
+성하는 것만 신경 쓰신다면 굳이 억지로 보실 필요는 없어요. 기본적으로 C++가 전역 유효
+범위에서 제공하는 operator new의 형태의 다음의 세 가지가 표준이라는 점만 기억해
+두시면 됩니다.
+
+// 기본형 new
+void* operator new(std::size_t):throw(std::bad_alloc);
+
+// 위치지정 new
+void* operator new(std::size_t, void*):throw();
+
+// 예외불가 new(항목 49 참조)
+void* operator new(std::size_t, const std::nothrow_t&):throw();
+
+어떤 형태이든 간에 operator new가 클래스 안에 선언되는 순간, 앞의 예제에서 보셨듯이
+위의 표준 형태들이 몽땅 가려지는 것입니다. 사용자가 이들 표준 형태를 쓰지 못하게 막자느
+것이 원래 의도가 아니었다면, 여러분 나름대로 넣어 준 사용자 정의 operator new 형태
+외에 표준 형태들도 사용자가 접근할 수 있도록 길을 활짝 열어 주도록 하십시오. 물론,
+operator new를 만들었다면 바늘에 실 따라가듯이 operator delete도 만들어 주는
+것도 잊지 마시고요. 클래스의 울타리 안에서 이런저런 할당/해제 함수들이 여느때와 똑같은
+방식으로 동작했으면 하는 경우에는, 그냥 클래스 전용 버전이 전역 버전을 호출하도록
+구현해 두면 됩니다.
+
+이것을 쉽게 할 수 있으면 더 좋겠죠? 한 가지 방법을 알려드리겠습니다. 기본 클래스 하나
+를 만들고, 이 안에 new 및 delete의 기본 형태를 전부 넣어두십시오.
+
+class StandardNewDeleteForms
+{
+	// 기본형 new/delete
+	static void* operator new(std::size_t size) throw(std::bad_alloc)
+	{ return ::operator new(size); }
+
+	static void operator delete(void* pMemory) throw()
+	{ ::operator delete(pMemory); }
+
+	// 위치지정 new/delete
+	static void* operator new(std::size_t size, void* ptr) thorw()
+	{ return ::operator new(size, ptr); }
+
+	static void operator delete(void* pMemory, void* ptr) throw()
+	{ return ::operator delete(pMemory, ptr); }
+
+	// 예외불가 new/delete
+	static void* operator new(std::size_t size, 
+								const std::nothrow_t& nt) throw()
+	{ return ::operator new(size, nt); }
+
+	static void operator delete(void* pMemory, 
+									const std::nothrow_t) throw()
+	{ return ::operator delete(pMemory); }
+};
+
+표준 형태에 덧붙여 사용자 정의 형태를 추가하고 싶다면, 이제는 이 기본 클래스를 축으로
+넗혀 가면 됩니다. 상속과 using 선언을 2단 콤보로 사용해서 표준 형태를 파생 클래스
+쪽으로 끌어와 외부에서 사용할 수 있게 만든 후에, 원하는 사용자 정의 형태를 선언해
+주세요.
+
+class Widget: public StandardNewDeleteForms
+{
+	public:
+		// 표준 형태가 (Widget 내부에) 보이도록 만듭니다.
+		using StandardNewDeleteForms::operator new;
+		using StandardNewDeleteForms::operator delete;
+
+		// 사용자 정의 위치지정 new를 추가합니다.
+		static void* operator new(std::size_t size, 
+						std::ostream& logStream) throw(std::bad_alloc);
+
+		// 앞의 것과 짝이 되는 위치지정 delete를 추가합니다.
+		static void operator delete(void* pMemory, 
+									std::ostream& logStream) thorw();
+		...
+};
+
+이것만은 잊지 말자!
+*	operator new함수의 위치지정(placement) 버전을 만들 때는, 이 함수와 짝을 이루는
+	위치지정 버전의 operator delete 함수도 꼭 만들어 주세요. 이 일을 빼먹었다가는, 찾아내
+	기도 힘들며 또 생겼다가 안 생겼다 하는 메모리 누출 현상을 경험하게 됩니다.
+
+*	new 및 delete의 위치지정 버전을 선언할 때는, 의도한 바도 아닌데 이들의 표준 버전이
+	가려지는 일이 생기지 않도록 주의해 주세요.
